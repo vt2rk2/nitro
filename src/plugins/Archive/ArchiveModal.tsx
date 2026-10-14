@@ -76,6 +76,7 @@ function UserList({ users, onRemove }: {
                         <Forms.FormTitle tag="h5">{user.name}</Forms.FormTitle>
                         <Button size="small" variant="dangerSecondary" onClick={() => onRemove(user.id)}>حذف</Button>
                     </div>
+                    {user.username && <Forms.FormText>اسم المستخدم: <code dir="ltr">@{user.username}</code></Forms.FormText>}
                     <Forms.FormText>المعرّف: <code dir="ltr">{user.id}</code></Forms.FormText>
                     <Forms.FormText>أول فتح: {formatDate(user.firstOpenedAt)}</Forms.FormText>
                     <Forms.FormText>آخر فتح: {formatDate(user.lastOpenedAt)}</Forms.FormText>

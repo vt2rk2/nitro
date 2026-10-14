@@ -50,7 +50,7 @@ function archiveUser(userId: string, source: "profile" | "dm") {
     if (!userId || userId === currentUser?.id) return;
 
     const user = UserStore.getUser(userId);
-    recordUser(userId, user?.globalName || user?.username || userId, source);
+    recordUser(userId, user?.globalName || user?.username || userId, source, user?.username);
 }
 
 export default definePlugin({

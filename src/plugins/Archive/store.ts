@@ -19,6 +19,7 @@ export interface GuildArchiveEntry {
 export interface UserArchiveEntry {
     id: string;
     name: string;
+    username?: string;
     firstOpenedAt: number;
     lastOpenedAt: number;
     sources: UserArchiveSource[];
@@ -71,6 +72,7 @@ function isUserEntry(value: unknown): value is UserArchiveEntry {
     const user = value as Partial<UserArchiveEntry>;
     return typeof user.id === "string"
         && typeof user.name === "string"
+        && (user.username === undefined || typeof user.username === "string")
         && Number.isFinite(user.firstOpenedAt)
         && Number.isFinite(user.lastOpenedAt)
         && Array.isArray(user.sources)
@@ -187,7 +189,7 @@ export function recordGuild(entry: GuildArchiveEntry) {
     }));
 }
 
-export function recordUser(id: string, name: string, source: UserArchiveSource, timestamp = Date.now()) {
+export function recordUser(id: string, name: string, source: UserArchiveSource, username?: string, timestamp = Date.now()) {
     void updateArchive(current => {
         const existing = current.users.find(user => user.id === id);
         if (
@@ -202,12 +204,14 @@ export function recordUser(id: string, name: string, source: UserArchiveSource, 
             ? {
                 ...existing,
                 name: name || existing.name,
+                username: username || existing.username,
                 lastOpenedAt: timestamp,
                 sources: existing.sources.includes(source) ? existing.sources : [...existing.sources, source]
             }
             : {
                 id,
                 name: name || id,
+                username,
                 firstOpenedAt: timestamp,
                 lastOpenedAt: timestamp,
                 sources: [source]
