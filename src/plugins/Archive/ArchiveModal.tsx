@@ -215,7 +215,7 @@ export function ArchiveModal(props: RenderModalProps & { initialConfirmation?: C
                 </div>
 
                 <Forms.FormText>
-                    يتم الحفظ على جهازك فقط. يظهر رابط Vanity إذا كان متاحًا؛ Discord لا يوفّر للإضافة رابط الدعوة العادي الذي استُخدم للانضمام.
+                    يتم الحفظ على جهازك فقط. يظهر رابط الاختصار إذا كان متاحًا في Discord؛ أما رابط الدعوة الذي دخلت منه فلا يظهر إلا إذا كان رابط اختصار.
                 </Forms.FormText>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
