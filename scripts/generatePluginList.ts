@@ -20,7 +20,7 @@ import { Dirent, readdirSync, readFileSync, writeFileSync } from "fs";
 import { access, readFile } from "fs/promises";
 import { join, sep } from "path";
 import { normalize as posixNormalize, sep as posixSep } from "path/posix";
-import { BigIntLiteral, createSourceFile, Identifier, isArrayLiteralExpression, isCallExpression, isExportAssignment, isIdentifier, isObjectLiteralExpression, isPropertyAccessExpression, isPropertyAssignment, isSatisfiesExpression, isStringLiteral, isVariableStatement, NamedDeclaration, NodeArray, ObjectLiteralExpression, ScriptTarget, StringLiteral, SyntaxKind } from "typescript";
+import { BigIntLiteral, createSourceFile, Identifier, isArrayLiteralExpression, isBigIntLiteral, isCallExpression, isElementAccessExpression, isExportAssignment, isIdentifier, isObjectLiteralExpression, isPropertyAccessExpression, isPropertyAssignment, isSatisfiesExpression, isStringLiteral, isVariableStatement, NamedDeclaration, NodeArray, ObjectLiteralExpression, ScriptTarget, StringLiteral, SyntaxKind } from "typescript";
 
 import { getPluginTarget } from "./utils.mjs";
 import { PluginTarget, PluginTargets } from "@utils/pluginTargets";
@@ -136,10 +136,28 @@ async function parseFile(fileName: string) {
                 case "authors":
                     if (!isArrayLiteralExpression(value)) throw fail("authors is not an array literal");
                     data.authors = value.elements.map(e => {
-                        if (!isPropertyAccessExpression(e)) throw fail("authors array contains non-property access expressions");
-                        const d = devs[getName(e)!];
-                        if (!d) throw fail(`couldn't look up author ${getName(e)}`);
-                        return d;
+                        if (isPropertyAccessExpression(e) || isElementAccessExpression(e)) {
+                            const authorName = isPropertyAccessExpression(e)
+                                ? getName(e)
+                                : e.argumentExpression && isStringLiteral(e.argumentExpression)
+                                    ? e.argumentExpression.text
+                                    : undefined;
+                            if (!authorName) throw fail("author references must use a named developer");
+                            const author = devs[authorName];
+                            if (!author) throw fail(`couldn't look up author ${authorName}`);
+                            return author;
+                        }
+
+                        if (!isObjectLiteralExpression(e)) throw fail("authors array contains an unsupported author");
+                        const authorName = getObjectProp(e, "name");
+                        const authorId = getObjectProp(e, "id");
+                        if (!authorName || !authorId || !isStringLiteral(authorName) || !isBigIntLiteral(authorId))
+                            throw fail("author objects must have string name and bigint id properties");
+
+                        return {
+                            name: authorName.text,
+                            id: authorId.text.slice(0, -1)
+                        };
                     });
                     break;
                 case "tags":

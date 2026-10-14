@@ -194,10 +194,19 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                                 text="View more info"
                                 href={`https://vencord.dev/plugins/${plugin.name}`}
                             />
-                            <GithubButton
-                                text="View source code"
-                                href={`https://github.com/${gitRemote}/tree/main/src/plugins/${pluginMeta.folderName}`}
-                            />
+                            {plugin.website
+                                ? (
+                                    <WebsiteButton
+                                        text={plugin.website}
+                                        href={plugin.website}
+                                    />
+                                )
+                                : (
+                                    <GithubButton
+                                        text="View source code"
+                                        href={`https://github.com/${gitRemote}/tree/main/src/plugins/${pluginMeta.folderName}`}
+                                    />
+                                )}
                         </div>
                     )}
                 </div>
