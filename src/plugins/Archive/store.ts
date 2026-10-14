@@ -259,11 +259,22 @@ export function pruneArchive(maxAgeDays: number, options: PruneOptions = {}) {
     if (!Number.isFinite(maxAgeDays) || maxAgeDays <= 0)
         return Promise.reject(new Error("Archive age must be a positive number of days"));
 
+    return pruneArchiveByAge(age => age >= maxAgeDays, options);
+}
+
+export function pruneArchiveRange(minAgeDays: number, maxAgeDays: number, options: PruneOptions = {}) {
+    if (!Number.isFinite(minAgeDays) || minAgeDays <= 0 || !Number.isFinite(maxAgeDays) || maxAgeDays < minAgeDays)
+        return Promise.reject(new Error("Archive age range must contain positive days in ascending order"));
+
+    return pruneArchiveByAge(age => age >= minAgeDays && age <= maxAgeDays, options);
+}
+
+function pruneArchiveByAge(matchesAge: (ageDays: number) => boolean, options: PruneOptions) {
     return enqueueArchiveOperation(async () => {
-        const cutoff = Date.now() - maxAgeDays * DAY_MS;
-        const users = archive.users.filter(user => user.lastOpenedAt >= cutoff);
+        const now = Date.now();
+        const users = archive.users.filter(user => !matchesAge((now - user.lastOpenedAt) / DAY_MS));
         const guilds = options.includeGuilds
-            ? archive.guilds.filter(guild => guild.joinedAt >= cutoff)
+            ? archive.guilds.filter(guild => !matchesAge((now - guild.joinedAt) / DAY_MS))
             : archive.guilds;
         const removed = archive.guilds.length - guilds.length + archive.users.length - users.length;
 

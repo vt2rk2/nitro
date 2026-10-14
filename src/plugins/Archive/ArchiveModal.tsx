@@ -17,6 +17,7 @@ import {
     exportArchive,
     getArchive,
     pruneArchive,
+    pruneArchiveRange,
     removeGuild,
     removeUser,
     subscribeToArchive
@@ -28,6 +29,7 @@ enum ArchiveTab {
 }
 
 type Confirmation = "all" | "tab" | "prune" | null;
+type PruneMode = "older" | "range";
 
 const logger = new Logger("Archive");
 
@@ -98,7 +100,10 @@ export function ArchiveModal(props: RenderModalProps & { initialConfirmation?: C
             ? initialConfirmation
             : null
     );
-    const [pruneDays, setPruneDays] = useState(30);
+    const [pruneMode, setPruneMode] = useState<PruneMode>("older");
+    const [pruneDays, setPruneDays] = useState("30");
+    const [rangeStartDays, setRangeStartDays] = useState("3");
+    const [rangeEndDays, setRangeEndDays] = useState("10");
     const [statusMessage, setStatusMessage] = useState("");
 
     useEffect(() => {
@@ -110,6 +115,12 @@ export function ArchiveModal(props: RenderModalProps & { initialConfirmation?: C
     const hasGuilds = archive.guilds.length > 0;
     const hasUsers = archive.users.length > 0;
     const hasCurrentTabEntries = tab === ArchiveTab.Servers ? hasGuilds : hasUsers;
+    const olderDays = Number(pruneDays);
+    const rangeStart = Number(rangeStartDays);
+    const rangeEnd = Number(rangeEndDays);
+    const isPruneInputValid = pruneMode === "older"
+        ? Number.isInteger(olderDays) && olderDays > 0
+        : Number.isInteger(rangeStart) && rangeStart > 0 && Number.isInteger(rangeEnd) && rangeEnd >= rangeStart;
 
     async function runConfirmedAction() {
         try {
@@ -121,8 +132,11 @@ export function ArchiveModal(props: RenderModalProps & { initialConfirmation?: C
                 else await clearUsers();
                 setStatusMessage(tab === ArchiveTab.Servers ? "تم مسح أرشيف السيرفرات." : "تم مسح أرشيف الحسابات.");
             } else if (confirmation === "prune") {
-                const removed = await pruneArchive(pruneDays);
-                setStatusMessage(`تم حذف ${removed} عنصر من الأقدم من ${pruneDays} يوم.`);
+                const options = { includeGuilds: true };
+                const removed = pruneMode === "older"
+                    ? await pruneArchive(olderDays, options)
+                    : await pruneArchiveRange(rangeStart, rangeEnd, options);
+                setStatusMessage(`تم حذف ${removed} عنصر من الأرشيف.`);
             }
 
             setConfirmation(null);
@@ -224,20 +238,67 @@ export function ArchiveModal(props: RenderModalProps & { initialConfirmation?: C
                         {confirmation === "prune"
                             ? (
                                 <>
-                                    <Forms.FormTitle tag="h5">اختر مدة الحذف</Forms.FormTitle>
-                                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                                        {[30, 90, 180].map(days => (
-                                            <Button
-                                                key={days}
-                                                variant={pruneDays === days ? "primary" : "secondary"}
-                                                aria-pressed={pruneDays === days}
-                                                onClick={() => setPruneDays(days)}
-                                            >
-                                                {days} يوم
-                                            </Button>
-                                        ))}
+                                    <Forms.FormTitle tag="h5">اختر طريقة الحذف</Forms.FormTitle>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                                        <Button
+                                            variant={pruneMode === "older" ? "primary" : "secondary"}
+                                            aria-pressed={pruneMode === "older"}
+                                            onClick={() => setPruneMode("older")}
+                                        >
+                                            الأقدم من عدد أيام
+                                        </Button>
+                                        <Button
+                                            variant={pruneMode === "range" ? "primary" : "secondary"}
+                                            aria-pressed={pruneMode === "range"}
+                                            onClick={() => setPruneMode("range")}
+                                        >
+                                            بين عمرين
+                                        </Button>
                                     </div>
-                                    <Forms.FormText>سيُحذف كل حساب لم يُفتح وكل سيرفر انضممت إليه قبل هذه المدة.</Forms.FormText>
+                                    {pruneMode === "older"
+                                        ? (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+                                                <label htmlFor="archive-prune-days">احذف ما عمره هذا العدد من الأيام أو أكثر:</label>
+                                                <input
+                                                    id="archive-prune-days"
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={pruneDays}
+                                                    onChange={event => setPruneDays(event.target.value)}
+                                                    style={{ width: 80 }}
+                                                />
+                                            </div>
+                                        )
+                                        : (
+                                            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+                                                <label htmlFor="archive-prune-range-start">من عمر (يوم):</label>
+                                                <input
+                                                    id="archive-prune-range-start"
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={rangeStartDays}
+                                                    onChange={event => setRangeStartDays(event.target.value)}
+                                                    style={{ width: 80 }}
+                                                />
+                                                <label htmlFor="archive-prune-range-end">إلى عمر (يوم):</label>
+                                                <input
+                                                    id="archive-prune-range-end"
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={rangeEndDays}
+                                                    onChange={event => setRangeEndDays(event.target.value)}
+                                                    style={{ width: 80 }}
+                                                />
+                                            </div>
+                                        )}
+                                    <Forms.FormText>
+                                        {pruneMode === "older"
+                                            ? "سيُحذف كل حساب لم يُفتح وكل سيرفر انضممت إليه منذ هذا العدد من الأيام أو أكثر."
+                                            : "سيُحذف كل حساب وسيرفر يقع عمره بين الحدين المحددين، شاملًا الحدين."}
+                                    </Forms.FormText>
                                 </>
                             )
                             : (
@@ -248,7 +309,7 @@ export function ArchiveModal(props: RenderModalProps & { initialConfirmation?: C
                                 </Forms.FormText>
                             )}
                         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                            <Button variant="dangerPrimary" onClick={runConfirmedAction}>تأكيد الحذف</Button>
+                            <Button variant="dangerPrimary" disabled={confirmation === "prune" && !isPruneInputValid} onClick={runConfirmedAction}>تأكيد الحذف</Button>
                             <Button variant="secondary" onClick={() => setConfirmation(null)}>إلغاء</Button>
                         </div>
                     </section>
