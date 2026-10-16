@@ -62,11 +62,11 @@ if errorlevel 1 goto error
 call pnpm.cmd run build
 if errorlevel 1 goto error
 
-call pnpm.cmd run inject
+call pnpm.cmd run inject -- --branch canary
 if errorlevel 1 goto error
 
 echo.
-echo Build and injection completed successfully.
+echo Build and Canary injection completed successfully.
 pause
 exit /b 0
 
